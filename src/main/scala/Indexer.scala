@@ -6,10 +6,7 @@ import scala.collection.mutable.HashSet
 import scala.reflect.io.Path
 import scala.util.parsing.json.JSON.parseFull
 
-case class CompactIndex(
-                         docs: RDD[Docs],
-                         words: RDD[(String, HashSet[String])]
-                       )
+
 
 case class Docs(
                  doc: String,
@@ -18,15 +15,7 @@ case class Docs(
 
 object Indexer {
 
-  val initialSet = HashSet.empty[String]
-  val initialMap = HashMap.empty[String, Int]
-  val addToSet = (s: HashSet[String], v: String) => s += v
-  val addToMap = (s: HashMap[String, Int], v: Tuple2[String, Int]) => s += v
-  val mergeSets = (p1: HashSet[String], p2: HashSet[String]) => p1 ++= p2
-  val mergeMaps = (p1: HashMap[String, Int], p2: HashMap[String, Int]) => p1 ++= p2
-
   var sc: SparkContext;
-
   //  val words_index: RDD[(String, HashSet[String])]; // word: {doc}
   //  val docs_index: RDD[(String, HashSet[(String, Int)])]; // doc: {(word: freq)}
 
