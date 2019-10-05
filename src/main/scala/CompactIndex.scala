@@ -4,8 +4,9 @@ import scala.collection.mutable.{HashMap, HashSet}
 import scala.util.parsing.json.JSON.parseFull
 
 
-case class CompactIndex(docs: RDD[(String, HashMap[String, Int])],
-                        words: RDD[(String, HashSet[String])]) {
+case class CompactIndex(docs: RDD[(String, HashMap[String, Int])], // doc_name: {word: freq}
+                        words: RDD[(String, HashSet[String])])     // word: {doc_name}
+{
   def join_index(index: CompactIndex): CompactIndex = {
     val new_words_index = index.words.union(words)
       .aggregateByKey(CompactIndex.initialSet)(CompactIndex.mergeSets, CompactIndex.mergeSets)
