@@ -18,6 +18,7 @@ object Indexer {
 
     val doc = sc.textFile(docPath)
     // TODO: add batch file processing for indexers
+    val empty_index = CompactIndex(sc.emptyRDD[(String, HashMap[String, Int])], sc.emptyRDD[(String, HashSet[String])])
     val compactIndex = CompactIndex.create_index_from_doc(doc)
     // To add next file do this:
     //    val new_doc = sc.textFile(next_file)
