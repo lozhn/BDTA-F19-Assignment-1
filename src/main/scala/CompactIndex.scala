@@ -1,23 +1,65 @@
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable.{HashMap, HashSet}
+import scala.util.parsing.json.JSON.parseFull
+
 
 case class CompactIndex(docs: RDD[(String, HashMap[String, Int])],
                         words: RDD[(String, HashSet[String])]) {
-
-  val initialSet = HashSet.empty[String]
-  val initialMap = HashMap.empty[String, Int]
-  val addToSet = (s: HashSet[String], v: String) => s += v
-  val addToMap = (s: HashMap[String, Int], v: Tuple2[String, Int]) => s += v
-  val mergeSets = (p1: HashSet[String], p2: HashSet[String]) => p1 ++= p2
-  val mergeMaps = (p1: HashMap[String, Int], p2: HashMap[String, Int]) => p1 ++= p2
-
   def join_index(index: CompactIndex): CompactIndex = {
     val new_words_index = index.words.union(words)
-      .aggregateByKey(initialSet)(mergeSets, mergeSets)
+      .aggregateByKey(CompactIndex.initialSet)(CompactIndex.mergeSets, CompactIndex.mergeSets)
     val new_docs_index = index.docs.union(docs)
-      .aggregateByKey(initialMap)(mergeMaps, mergeMaps)
+      .aggregateByKey(CompactIndex.initialMap)(CompactIndex.mergeMaps, CompactIndex.mergeMaps)
     CompactIndex(new_docs_index, new_words_index)
   }
-
 }
+
+object CompactIndex {
+  private val initialSet = HashSet.empty[String]
+
+  private val initialMap = HashMap.empty[String, Int]
+
+  private val addToSet = (s: HashSet[String], v: String) => s += v
+
+  private val addToMap = (s: HashMap[String, Int], v: Tuple2[String, Int]) => s += v
+
+  private val mergeSets = (p1: HashSet[String], p2: HashSet[String]) => p1 ++= p2
+
+  private val mergeMaps = (p1: HashMap[String, Int], p2: HashMap[String, Int]) => p1 ++= p2
+
+  def create_index_from_doc(doc: RDD[String]): CompactIndex = {
+    val title_word_freq = parse_doc(doc)
+    val docs_index = title_word_freq.map({ case ((title, word), freq) => (title, (word, freq)) })
+      .aggregateByKey(initialMap)(addToMap, mergeMaps)
+    val words_index = title_word_freq.map({ case ((title, word), freq) => (word, title) })
+      .aggregateByKey(initialSet)(addToSet, mergeSets)
+    CompactIndex(docs_index, words_index)
+  }
+
+  private def standardize(word: String): String = {
+    word.replaceAll("""('s)|([\p{Punct}&&[^-]])""", " ")
+      .trim
+      .toLowerCase
+  }
+
+  private def parseJson(jsonString: String): Map[String, String] = {
+    parseFull(jsonString).get.asInstanceOf[Map[String, String]]
+  }
+
+  private def parse_doc(doc: RDD[String]): RDD[((String, String), Int)] = {
+    val title_text = doc.map(line => {
+      val json = parseJson(line)
+      (json("title"), json("text"))
+    })
+
+    title_text.flatMap({ case (doc, text) =>
+      val words = text.split("\\s")
+      words.map(standardize)
+        .filter(_.length > 1)
+        .map(word => ((doc, word), 1))
+    }).reduceByKey(_ + _)
+  }
+}
+
+
