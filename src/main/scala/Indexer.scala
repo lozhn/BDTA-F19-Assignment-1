@@ -1,15 +1,32 @@
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
+import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
+import scala.reflect.io.Path
 import scala.util.parsing.json.JSON.parseFull
 
+case class CompactIndex(
+                         docs: RDD[Docs],
+                         words: RDD[(String, HashSet[String])]
+                       )
+
+case class Docs(
+                 doc: String,
+                 word_freq: HashMap[String, Int]
+               )
 
 object Indexer {
 
-  private val initialSet = HashSet.empty[Any]
-  private val addToSet = (s: HashSet[Any], v: Any) => s += v
-  private val mergeSets = (p1: HashSet[Any], p2: HashSet[Any]) => p1 ++= p2
+  val initialSet = HashSet.empty[String]
+  val initialMap = HashMap.empty[String, Int]
+  val addToSet = (s: HashSet[String], v: String) => s += v
+  val addToMap = (s: HashMap[String, Int], v: Tuple2[String, Int]) => s += v
+  val mergeSets = (p1: HashSet[String], p2: HashSet[String]) => p1 ++= p2
+  val mergeMaps = (p1: HashMap[String, Int], p2: HashMap[String, Int]) => p1 ++= p2
+
+  var sc: SparkContext;
+
   //  val words_index: RDD[(String, HashSet[String])]; // word: {doc}
   //  val docs_index: RDD[(String, HashSet[(String, Int)])]; // doc: {(word: freq)}
 
@@ -23,12 +40,15 @@ object Indexer {
     val doc = sc.textFile(docPath)
     val twf = parse_doc(doc)
     val docs_index = twf.map({ case ((title, word), freq) => (title, (word, freq)) })
-      .aggregateByKey(initialSet)(addToSet, mergeSets)
+      .aggregateByKey(initialMap)(addToMap, mergeMaps)
+      .map({ case (title, maps) => Docs(title, maps) })
+
     val words_index = twf.map({ case ((title, word), freq) => (word, title) })
       .aggregateByKey(initialSet)(addToSet, mergeSets)
 
-    docs_index.saveAsTextFile(outIndexPath + "/docs.index")
-    words_index.saveAsTextFile(outIndexPath + "/words.index")
+    val index = CompactIndex(docs_index, words_index)
+
+    serialize(index)
   }
 
   def standardize(word: String): String = {
@@ -53,6 +73,16 @@ object Indexer {
         .filter(_.length > 1)
         .map(word => ((doc, word), 1))
     }).reduceByKey(_ + _)
+  }
+
+  def add_docs(doc_files: RDD[String]) = {
+    doc_files.map(file => sc.textFile(file)).map() {
+      val index = load_index()
+      val doc = sc.textFile(file)
+      val d_title_word_freq = parse_doc(file)
+      add_doc_to_index(doc, docs)
+
+    }
   }
 
 
