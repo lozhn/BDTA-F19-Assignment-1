@@ -18,6 +18,9 @@ object Indexer {
 
     val doc = sc.textFile(docPath)
     val compactIndex = CompactIndex.create_index_from_doc(doc)
+    // To add next file do this:
+    //    val new_doc = sc.textFile(next_file)
+    //    val joined_index = compactIndex.join_index(CompactIndex.create_index_from_doc(new_doc))
   }
 
 }
