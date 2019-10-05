@@ -5,8 +5,9 @@ import scala.util.parsing.json.JSON.parseFull
 
 
 case class CompactIndex(docs: RDD[(String, HashMap[String, Int])], // doc_name: {word: freq}
-                        words: RDD[(String, HashSet[String])])     // word: {doc_name}
+                        words: RDD[(String, HashSet[String])]) // word: {doc_name}
 {
+  // TODO: check corresponding immutable collections
   def join_index(index: CompactIndex): CompactIndex = {
     val new_words_index = index.words.union(words)
       .aggregateByKey(CompactIndex.initialSet)(CompactIndex.mergeSets, CompactIndex.mergeSets)
@@ -58,7 +59,9 @@ object CompactIndex {
       words.map(standardize)
         .filter(_.length > 1)
         .map(word => ((doc, word), 1))
-    }).reduceByKey(_ + _).map({ case ((title, word), freq) => Record(title, word, freq) })
+    })
+      .reduceByKey(_ + _)
+      .map({ case ((title, word), freq) => Record(title, word, freq) })
   }
 }
 
