@@ -30,9 +30,9 @@ object CompactIndex {
 
   def create_index_from_doc(doc: RDD[String]): CompactIndex = {
     val title_word_freq = parse_doc(doc)
-    val docs_index = title_word_freq.map({ case ((title, word), freq) => (title, (word, freq)) })
+    val docs_index = title_word_freq.map({ case Record(title, word, freq) => (title, (word, freq)) })
       .aggregateByKey(initialMap)(addToMap, mergeMaps)
-    val words_index = title_word_freq.map({ case ((title, word), freq) => (word, title) })
+    val words_index = title_word_freq.map({ case Record(title, word, _) => (word, title) })
       .aggregateByKey(initialSet)(addToSet, mergeSets)
     CompactIndex(docs_index, words_index)
   }
@@ -47,18 +47,17 @@ object CompactIndex {
     parseFull(jsonString).get.asInstanceOf[Map[String, String]]
   }
 
-  private def parse_doc(doc: RDD[String]): RDD[((String, String), Int)] = {
+  private def parse_doc(doc: RDD[String]): RDD[Record] = {
     val title_text = doc.map(line => {
       val json = parseJson(line)
       (json("title"), json("text"))
     })
-
     title_text.flatMap({ case (doc, text) =>
       val words = text.split("\\s")
       words.map(standardize)
         .filter(_.length > 1)
         .map(word => ((doc, word), 1))
-    }).reduceByKey(_ + _)
+    }).reduceByKey(_ + _).map({ case ((title, word), freq) => Record(title, word, freq) })
   }
 }
 
