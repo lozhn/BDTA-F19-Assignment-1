@@ -21,4 +21,18 @@ object Indexer {
   def parseJson(jsonString: String): Map[String, String] = {
     parseFull(jsonString).get.asInstanceOf[Map[String, String]]
   }
+
+  def parse_doc(doc: RDD[String]): RDD[((String, String), Int)]={
+    val title_text = doc.map(line => {
+      val json = parseJson(line)
+      (json("title"), json("text"))
+    })
+
+    title_text.flatMap({case(doc, text) =>
+      val words = text.split("\\s")
+      words.map(standardize)
+        .filter(_.length > 1)
+        .map(word => ((doc, word), 1))
+    }).reduceByKey(_+_)
+  }
 }
