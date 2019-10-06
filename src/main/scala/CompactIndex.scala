@@ -31,7 +31,7 @@ object CompactIndex {
   private val mergeMaps = (p1: HashMap[String, Int], p2: HashMap[String, Int]) => p1 ++= p2
 
   def create_index_from_doc(doc: RDD[String]): CompactIndex = {
-    get_index(parse_doc(doc))
+    get_index(get_records(doc))
   }
 
   def get_index(records: RDD[Record]): CompactIndex = {
@@ -52,7 +52,7 @@ object CompactIndex {
     parseFull(jsonString).get.asInstanceOf[Map[String, String]]
   }
 
-  private def parse_doc(doc: RDD[String]): RDD[Record] = {
+  def get_records(doc: RDD[String]): RDD[Record] = {
     val title_text = doc.map(line => {
       val json = parseJson(line)
       (json("title"), json("text"))
