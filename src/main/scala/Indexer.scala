@@ -1,44 +1,57 @@
-import org.apache.spark.rdd.RDD
-import org.apache.spark.{SparkConf, SparkContext}
-
-import scala.collection.mutable.{HashMap, HashSet}
-import scala.util.parsing.json.JSON.parseFull
-
+import org.apache.log4j.{Level, Logger}
+import org.apache.spark.sql.SparkSession
 
 object Indexer {
-  var sc: SparkContext = _
+  /***
+   *
+   * @param args:
+   *            args[0]: filesForIndexing - path to directory with wiki dump files: Path
+   *            args[1]: indexPath - path to save and load index files: Path
+   *            args[2]: mode - building from scratch or adding new files to index: build | add
+   */
 
   def main(args: Array[String]): Unit = {
+    val spark = initSpark()
+    var index: CompactIndex = null
+    val filesForIndexing = args(0)
+    val indexPath = args(1)
+    val mode = args(2)
 
-    val index = CompactIndex.buildIndex("src/main/resources/EnWikiSmall")
-//    index.words.take(20).map(println)
-    println(index.words.count(), index.docs.count())
+    index = CompactIndex.buildIndex(filesForIndexing, spark)
+    if (mode == "add") {
+      val indexPath = args(2)
+      val loaded_index = CompactIndex.load(indexPath, spark)
+      index.join_index(loaded_index)
+    }
+    index.save(indexPath) // 13 seconds to save EnWikiSmall index
 
-//    val conf = new SparkConf().setAppName("appName").setMaster("local[2]")
-//    sc = new SparkContext(conf)
+    /*** Timing experiments
+    time({
+      index = CompactIndex.buildIndex("src/main/resources/EnWikiSmall", spark)
+      println(index.words.count(), index.docs.count()) // about 108 seconds on EnWikiSmall
+    })
 
-//    val docPath = args(0)
-//    val outIndexPath = args(1)
-
-//    val doc = sc.textFile(docPath)
-    // TODO: add batch file processing for indexers
-//    val empty_index = CompactIndex(sc.emptyRDD[(String, HashMap[String, Int])], sc.emptyRDD[(String, HashSet[String])])
-//    val compactIndex = CompactIndex.createIndexFromDoc(doc)
-    // To add next file do this:
-    //    val new_doc = sc.textFile(next_file)
-    //    val joined_index = compactIndex.join_index(CompactIndex.create_index_from_doc(new_doc))
+    // Saving and loading is time consuming due to internal conversion to RDD[Record]
+    time({
+      index.save("src/main/resources/index.out") // 13 seconds to save EnWikiSmall index
+    })
+    time({
+      index = CompactIndex.load("src/main/resources/index.out", spark) // 50 seconds to load index
+      println(index.words.count(), index.docs.count())
+    })
+     ***/
   }
 
+  private def initSpark(): SparkSession = {
+    Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
+    SparkSession.builder().appName("SearchEngine").master("local").getOrCreate()
+  }
 
-  // mock
-//  def load(): CompactIndex = new CompactIndex(
-//    RDD[(String, HashMap[String, Int])],
-//    RDD[(String, HashSet[String])]
-//  )
-
-//  def batch_file_processor(files: List[String], batch_size: Int = 8): RDD[String] = {
-//    files.iterator.grouped(batch_size).foreach(sc.textFile)
-//  }
-
-
+  def time[R](block: => R): R = {
+    val t0 = System.nanoTime()
+    val result = block    // call-by-name
+    val t1 = System.nanoTime()
+    println("Elapsed time: " + (t1 - t0) / 1000000000 + "s")
+    result
+  }
 }
