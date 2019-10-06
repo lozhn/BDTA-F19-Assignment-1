@@ -2,10 +2,12 @@ import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable.{HashMap, HashSet}
 import scala.util.parsing.json.JSON.parseFull
+import implicits._
 
+case class Record(title: String, word: String, freq: Int)
 
-case class CompactIndex(docs: RDD[(String, HashMap[String, Int])], // doc_name: {word: freq}
-                        words: RDD[(String, HashSet[String])]) // word: {doc_name}
+case class CompactIndex(docs:  RDD[(String, HashMap[String, Int])], // doc_name: {word: freq}
+                        words: RDD[(String, HashSet[String])])      // word: {doc_name}
 {
   // TODO: check corresponding immutable collections
   def join_index(index: CompactIndex): CompactIndex = {
@@ -39,12 +41,6 @@ object CompactIndex {
     CompactIndex(docs_index, words_index)
   }
 
-  private def standardize(word: String): String = {
-    word.replaceAll("""('s)|([\p{Punct}&&[^-]])""", " ")
-      .trim
-      .toLowerCase
-  }
-
   private def parseJson(jsonString: String): Map[String, String] = {
     parseFull(jsonString).get.asInstanceOf[Map[String, String]]
   }
@@ -56,7 +52,7 @@ object CompactIndex {
     })
     title_text.flatMap({ case (doc, text) =>
       val words = text.split("\\s")
-      words.map(standardize)
+      words.map(_.sanitizeTrimLower)
         .filter(_.length > 1)
         .map(word => ((doc, word), 1))
     })

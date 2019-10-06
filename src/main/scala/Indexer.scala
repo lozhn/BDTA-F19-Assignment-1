@@ -1,9 +1,7 @@
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 
-import scala.collection.mutable.HashMap
-import scala.collection.mutable.HashSet
-import scala.reflect.io.Path
+import scala.collection.mutable.{HashMap, HashSet}
 import scala.util.parsing.json.JSON.parseFull
 
 
@@ -23,5 +21,11 @@ object Indexer {
     //    val new_doc = sc.textFile(next_file)
     //    val joined_index = compactIndex.join_index(CompactIndex.create_index_from_doc(new_doc))
   }
+
+  // mock
+//  def load(): CompactIndex = new CompactIndex(
+//    RDD[(String, HashMap[String, Int])],
+//    RDD[(String, HashSet[String])]
+//  )
 
 }
