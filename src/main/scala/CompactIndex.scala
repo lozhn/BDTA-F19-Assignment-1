@@ -1,13 +1,18 @@
 import org.apache.spark.rdd.RDD
 
 import scala.collection.mutable.{HashMap, HashSet}
-import scala.util.parsing.json.JSON.parseFull
+import org.apache.spark.sql.SparkSession
+import org.apache.log4j.{Level, Logger}
+
 import implicits._
 
-case class Record(title: String, word: String, freq: Int)
+final case class DataRow(title: String, text: String)
 
-case class CompactIndex(docs:  RDD[(String, HashMap[String, Int])], // doc_name: {word: freq}
-                        words: RDD[(String, HashSet[String])])      // word: {doc_name}
+
+final case class Record(title: String, word: String, freq: Int)
+
+final case class CompactIndex(docs: RDD[(String, HashMap[String, Int])], // doc_name: {word: freq}
+                        words: RDD[(String, HashSet[String])]) // word: {doc_name}
 {
   // TODO: check corresponding immutable collections
   def join_index(index: CompactIndex): CompactIndex = {
@@ -21,46 +26,49 @@ case class CompactIndex(docs:  RDD[(String, HashMap[String, Int])], // doc_name:
 
 object CompactIndex {
   private val initialSet = HashSet.empty[String]
-
   private val initialMap = HashMap.empty[String, Int]
-
   private val addToSet = (s: HashSet[String], v: String) => s += v
-
-  private val addToMap = (s: HashMap[String, Int], v: Tuple2[String, Int]) => s += v
-
+  private val addToMap = (s: HashMap[String, Int], v: (String, Int)) => s += v
   private val mergeSets = (p1: HashSet[String], p2: HashSet[String]) => p1 ++= p2
-
   private val mergeMaps = (p1: HashMap[String, Int], p2: HashMap[String, Int]) => p1 ++= p2
 
-  def create_index_from_doc(doc: RDD[String]): CompactIndex = {
-    get_index(get_records(doc))
+  def initSpark(): SparkSession = {
+    Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
+    SparkSession.builder().appName("SearchEngine").master("local").getOrCreate()
   }
 
-  def get_index(records: RDD[Record]): CompactIndex = {
+//  def createIndexFromDoc(doc: RDD[String]): CompactIndex = {
+//    getIndex(getRecords(doc))
+//  }
+
+  def buildIndex(path: String): CompactIndex = {
+    val spark = initSpark()
+    import spark.implicits._
+    val path = "src/main/resources/EnWikiSmall"
+    val ds = spark.read.json(path).as[DataRow]
+
+    val records = ds.flatMap(row =>
+    row.text
+      .split("\\s")
+      .map(_.sanitizeTrimLower)
+      .filter(_.length > 1)
+      .map(w => ((row.title, w), 1))
+    ).rdd
+      .reduceByKey(_ + _)
+      .map { case ((title, word), freq) => Record(title, word, freq) }
+
+    getIndex(records)
+  }
+
+
+  def getIndex(records: RDD[Record]): CompactIndex = {
     val docs_index = records.map({ case Record(title, word, freq) => (title, (word, freq)) })
       .aggregateByKey(initialMap)(addToMap, mergeMaps)
+
     val words_index = records.map({ case Record(title, word, _) => (word, title) })
       .aggregateByKey(initialSet)(addToSet, mergeSets)
+
     CompactIndex(docs_index, words_index)
-  }
-
-  private def parseJson(jsonString: String): Map[String, String] = {
-    parseFull(jsonString).get.asInstanceOf[Map[String, String]]
-  }
-
-  def get_records(doc: RDD[String]): RDD[Record] = {
-    val title_text = doc.map(line => {
-      val json = parseJson(line)
-      (json("title"), json("text"))
-    })
-    title_text.flatMap({ case (doc, text) =>
-      val words = text.split("\\s")
-      words.map(_.sanitizeTrimLower)
-        .filter(_.length > 1)
-        .map(word => ((doc, word), 1))
-    })
-      .reduceByKey(_ + _)
-      .map({ case ((title, word), freq) => Record(title, word, freq) })
   }
 }
 

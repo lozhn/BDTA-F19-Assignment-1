@@ -15,8 +15,8 @@ object Application {
     val spark = initSpark()
     import spark.implicits._
 
-    val path = "src/main/resources/"
-    val ds = spark.read.json(path).as[Row]
+    val path = "src/main/resources/EnWikiSmall"
+    val ds = spark.read.json(path).as[DataRow]
 
     ds.flatMap(row =>
       row.text

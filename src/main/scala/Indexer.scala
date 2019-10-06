@@ -6,19 +6,24 @@ import scala.util.parsing.json.JSON.parseFull
 
 
 object Indexer {
-  var sc: SparkContext
+  var sc: SparkContext = _
 
   def main(args: Array[String]): Unit = {
-    val conf = new SparkConf().setAppName("appName").setMaster("local[2]")
-    sc = new SparkContext(conf)
 
-    val docPath = args(0)
-    val outIndexPath = args(1)
+    val index = CompactIndex.buildIndex("src/main/resources/EnWikiSmall")
+//    index.words.take(20).map(println)
+    println(index.words.count(), index.docs.count())
 
-    val doc = sc.textFile(docPath)
+//    val conf = new SparkConf().setAppName("appName").setMaster("local[2]")
+//    sc = new SparkContext(conf)
+
+//    val docPath = args(0)
+//    val outIndexPath = args(1)
+
+//    val doc = sc.textFile(docPath)
     // TODO: add batch file processing for indexers
-    val empty_index = CompactIndex(sc.emptyRDD[(String, HashMap[String, Int])], sc.emptyRDD[(String, HashSet[String])])
-    val compactIndex = CompactIndex.create_index_from_doc(doc)
+//    val empty_index = CompactIndex(sc.emptyRDD[(String, HashMap[String, Int])], sc.emptyRDD[(String, HashSet[String])])
+//    val compactIndex = CompactIndex.createIndexFromDoc(doc)
     // To add next file do this:
     //    val new_doc = sc.textFile(next_file)
     //    val joined_index = compactIndex.join_index(CompactIndex.create_index_from_doc(new_doc))
