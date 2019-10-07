@@ -40,13 +40,13 @@ object CompactIndex {
 
   // TODO: Find the way without using intermediate records
   def load(path: String, spark: SparkSession): CompactIndex = {
-    print("Start loading")
+    println("Start loading")
     val docs = spark.sparkContext.objectFile[(String, Seq[(String, Int)])](path  + "_docs")
       .map({ case (doc, words) => (doc, HashMap(words: _*)) })
-    print("Loaded docs")
+    println("Loaded docs")
     val words = spark.sparkContext.objectFile[(String, Seq[String])](path  + "_words")
       .map({ case (word, docs) => (word, HashSet(docs: _*))})
-    print("Loaded words")
+    println("Loaded words")
     CompactIndex(docs, words)
     //    val records = spark.sparkContext.objectFile[(String, String, Int)](path)
     //      .map({ case (title, word, freq) => Record(title, word, freq) })

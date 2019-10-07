@@ -18,6 +18,8 @@ object Application {
     val path = "src/main/resources/EnWikiSmall"
     val ds = spark.read.json(path).as[DataRow]
 
+    spark.sparkContext.broadcast()
+
     ds.flatMap(row =>
       row.text
         .split("\\s")
