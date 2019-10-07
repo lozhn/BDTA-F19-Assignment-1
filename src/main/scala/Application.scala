@@ -27,6 +27,5 @@ object Application {
         .filter(_.length > 1)
         .map(w => ((w, row.title), 1))
     )
-
   }
 }

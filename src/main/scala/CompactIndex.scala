@@ -1,7 +1,9 @@
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import implicits._
+import org.apache.spark.broadcast.Broadcast
 
+import scala.collection.mutable
 import scala.collection.mutable.{HashMap, HashSet}
 
 final case class Record(title: String, word: String, freq: Int)
@@ -18,15 +20,27 @@ final case class CompactIndex(docs: RDD[(String, HashMap[String, Int])], // doc_
     val new_docs_index = index.docs.union(docs)
       .aggregateByKey(CompactIndex.initialMap)(CompactIndex.mergeMaps, CompactIndex.mergeMaps)
     CompactIndex(new_docs_index, new_words_index)
+    //    this.docs.map({ case (doc, words) =>
+    //      val tfidf = words.map({ case (word, tf) =>
+    //        (word ,tf / IDF.value.getOrElse(word, default = 0))
+    //      })
+    //    })
   }
 
   // TODO: Find the way of serializing without using intermediate records
   def save(outPath: String): Unit = {
     this.docs.map({ case (doc, words) => (doc, words.toSeq) }).saveAsObjectFile(outPath + "_docs")
     this.words.map({ case (word, docs) => (word, docs.toSeq) }).saveAsObjectFile(outPath + "_words")
-    //    this.docs.flatMap({ case (doc, words) =>
-    //      words.map({ case (word, freq) => (doc, word, freq) })
-    //    }).saveAsObjectFile(outPath)
+  }
+
+  def getAvgdl: Double = {
+    this.docs.map({ case (_, words) => words.size }).mean()
+  }
+
+  def getIDF(N: Long, spark: SparkSession): Broadcast[Map[String, Double]] = {
+    val idf = this.words.map({ case (word, docs) => (word, docs.size) })
+      .map({ case (word, n) => (word, math.log(N / (n + 1e-10))) }).collect().toMap // word : IDF
+    spark.sparkContext.broadcast[Map[String, Double]](idf)
   }
 }
 
@@ -40,17 +54,11 @@ object CompactIndex {
 
   // TODO: Find the way without using intermediate records
   def load(path: String, spark: SparkSession): CompactIndex = {
-    println("Start loading")
-    val docs = spark.sparkContext.objectFile[(String, Seq[(String, Int)])](path  + "_docs")
+    val docs = spark.sparkContext.objectFile[(String, Seq[(String, Int)])](path + "_docs")
       .map({ case (doc, words) => (doc, HashMap(words: _*)) })
-    println("Loaded docs")
-    val words = spark.sparkContext.objectFile[(String, Seq[String])](path  + "_words")
-      .map({ case (word, docs) => (word, HashSet(docs: _*))})
-    println("Loaded words")
+    val words = spark.sparkContext.objectFile[(String, Seq[String])](path + "_words")
+      .map({ case (word, docs) => (word, HashSet(docs: _*)) })
     CompactIndex(docs, words)
-    //    val records = spark.sparkContext.objectFile[(String, String, Int)](path)
-    //      .map({ case (title, word, freq) => Record(title, word, freq) })
-    //    buildIndexOnRecords(records)
   }
 
   def buildIndex(path: String = null, spark: SparkSession): CompactIndex = {
