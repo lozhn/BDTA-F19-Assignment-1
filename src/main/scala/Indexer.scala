@@ -21,29 +21,25 @@ object Indexer {
     index = CompactIndex.buildIndex(filesForIndexing, spark)
     if (mode == "add") {
       val loadPath = args(3)
-      println("Loading index")
       val loaded_index = CompactIndex.load(loadPath, spark)
       index = index.join_index(loaded_index)
     }
     index.save(indexPath)
 
+//    time({
+//      index = CompactIndex.buildIndex("src/main/resources/EnWikiSmall", spark)
+//      println(index.words.count(), index.docs.count()) // about 108 seconds on EnWikiSmall
+//    })
+//
+//    // Saving and loading is time consuming due to internal conversion to RDD[Record]
+//    time({
+//      index.save("src/main/resources/index.out") // 13 seconds to save EnWikiSmall index
+//    })
+//    time({
+//      index = CompactIndex.load("src/main/resources/index.out", spark) // 50 seconds to load index
+//      println(index.words.count(), index.docs.count())
+//    })
 
-
-    /*** Timing experiments
-    time({
-      index = CompactIndex.buildIndex("src/main/resources/EnWikiSmall", spark)
-      println(index.words.count(), index.docs.count()) // about 108 seconds on EnWikiSmall
-    })
-
-    // Saving and loading is time consuming due to internal conversion to RDD[Record]
-    time({
-      index.save("src/main/resources/index.out") // 13 seconds to save EnWikiSmall index
-    })
-    time({
-      index = CompactIndex.load("src/main/resources/index.out", spark) // 50 seconds to load index
-      println(index.words.count(), index.docs.count())
-    })
-     ***/
   }
 
   private def initSpark(): SparkSession = {
