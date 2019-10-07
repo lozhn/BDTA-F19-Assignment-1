@@ -1,20 +1,19 @@
 import implicits._
 import org.apache.log4j.{Level, Logger}
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 
-import scala.collection.mutable.HashSet
-
-
 object Query {
-  private val queryProcess = (s: String) => s.split("\\s").map(_.sanitizeTrimLower).filter(_.length > 1)
-
   def initSpark(): SparkSession = {
     Logger.getLogger("org.apache.spark").setLevel(Level.ERROR)
     SparkSession.builder().appName("SearchEngine").master("local").getOrCreate()
   }
 
+
+  /**
+   * @param args:
+   *            args[0]
+   */
   def main(args: Array[String]): Unit = {
     val spark = initSpark()
     import spark.implicits._
@@ -27,18 +26,16 @@ object Query {
     val k = spark.sparkContext.broadcast[Double](2.0)
     val b = spark.sparkContext.broadcast[Double](0.75)
     val D = spark.sparkContext.broadcast[Long](index.docs.count())
-    val avgdl = spark.sparkContext.broadcast[Double](index.docs.map({ case (_, map) => map.size }).reduce(_ + _) / index.docs.count())
+    val avgdl = spark.sparkContext.broadcast[Double](index.docs.map({ case (_, map) => map.size }).mean())
     val param = spark.sparkContext.broadcast[Double](k.value * (1 - b.value + b.value * D.value / avgdl.value))
 
 
     // preprocessed query
-    val queryTerms = queryProcess(query)
+    val queryTerms = query.tokenize
 
     Indexer.time {
-
-      // var _idfs = queryTerms.map(word => (word, index.words.lookup(word).length))
       // idfs of words that are both in voc and query
-      var _idfs: RDD[(String, Double)] = index.words
+      val _idfs: RDD[(String, Double)] = index.words
         .filter({ case (w, _) => queryTerms.contains(w) })
         .map({ case (w, docs) =>
           val n = docs.size
