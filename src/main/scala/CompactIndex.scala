@@ -22,9 +22,11 @@ final case class CompactIndex(docs: RDD[(String, HashMap[String, Int])], // doc_
 
   // TODO: Find the way of serializing without using intermediate records
   def save(outPath: String): Unit = {
-    this.docs.flatMap({ case (doc, words) =>
-      words.map({ case (word, freq) => (doc, word, freq) })
-    }).saveAsObjectFile(outPath)
+    this.docs.map({ case (doc, words) => (doc, words.toSeq) }).saveAsObjectFile(outPath + "_docs")
+    this.words.map({ case (word, docs) => (word, docs.toSeq) }).saveAsObjectFile(outPath + "_words")
+    //    this.docs.flatMap({ case (doc, words) =>
+    //      words.map({ case (word, freq) => (doc, word, freq) })
+    //    }).saveAsObjectFile(outPath)
   }
 }
 
@@ -38,9 +40,17 @@ object CompactIndex {
 
   // TODO: Find the way without using intermediate records
   def load(path: String, spark: SparkSession): CompactIndex = {
-    val records = spark.sparkContext.objectFile[(String, String, Int)](path)
-      .map({ case (title, word, freq) => Record(title, word, freq) })
-    buildIndexOnRecords(records)
+    print("Start loading")
+    val docs = spark.sparkContext.objectFile[(String, Seq[(String, Int)])](path  + "_docs")
+      .map({ case (doc, words) => (doc, HashMap(words: _*)) })
+    print("Loaded docs")
+    val words = spark.sparkContext.objectFile[(String, Seq[String])](path  + "_words")
+      .map({ case (word, docs) => (word, HashSet(docs: _*))})
+    print("Loaded words")
+    CompactIndex(docs, words)
+    //    val records = spark.sparkContext.objectFile[(String, String, Int)](path)
+    //      .map({ case (title, word, freq) => Record(title, word, freq) })
+    //    buildIndexOnRecords(records)
   }
 
   def buildIndex(path: String = null, spark: SparkSession): CompactIndex = {
