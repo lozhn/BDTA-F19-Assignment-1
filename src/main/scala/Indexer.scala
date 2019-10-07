@@ -6,8 +6,9 @@ object Indexer {
    *
    * @param args:
    *            args[0]: filesForIndexing - path to directory with wiki dump files: Path
-   *            args[1]: indexPath - path to save and load index files: Path
+   *            args[1]: indexSavePath - path to save and load index files: Path
    *            args[2]: mode - building from scratch or adding new files to index: build | add
+   *            args[3]: indexLoadPath - path to save and load index files: Path
    */
 
   def main(args: Array[String]): Unit = {
@@ -19,11 +20,14 @@ object Indexer {
 
     index = CompactIndex.buildIndex(filesForIndexing, spark)
     if (mode == "add") {
-      val indexPath = args(2)
-      val loaded_index = CompactIndex.load(indexPath, spark)
-      index.join_index(loaded_index)
+      val loadPath = args(3)
+      println("Loading index")
+      val loaded_index = CompactIndex.load(loadPath, spark)
+      index = index.join_index(loaded_index)
     }
-    index.save(indexPath) // 13 seconds to save EnWikiSmall index
+    index.save(indexPath)
+
+
 
     /*** Timing experiments
     time({
