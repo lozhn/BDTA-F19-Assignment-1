@@ -71,7 +71,8 @@ object CompactIndex {
     import spark.implicits._
 
     if (path == null) {
-      val path = "src/main/resources/EnWikiSmall"
+      println("Path is null. Using EnWikiSmall")
+      val path = "./resources/EnWikiSmall"
     }
     val ds = spark.read.json(path).as[DataRow]
 

@@ -9,6 +9,11 @@ object Query {
     SparkSession.builder().appName("SearchEngine").master("local").getOrCreate()
   }
 
+
+  /**
+   * @param args:
+   *            args[0]
+   */
   def main(args: Array[String]): Unit = {
     val spark = initSpark()
     import spark.implicits._
