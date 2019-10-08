@@ -3,9 +3,9 @@
 ## [Github Repository](https://github.com/lozhn/BDTA-F19-Assignment-1) 
 
 ## Team: 
-- Arseniy Poyezzshayev (a.poezzhaev@innopolis.ru) (@arseniy_p)
-- Nikita Lozhnkov (n.lozhnikov@innopolis.ru) (@palpatine)
-- Sergey Bakaleynik (s.bakaleynik@innopolis.ru) (@BSergey_jr)
+- Arseniy Poyezzshayev (a.poezzhaev@innopolis.ru) ([@arseniy_p](tele.click/arseniy_p))
+- Nikita Lozhnkov (n.lozhnikov@innopolis.ru) ([@palpatine](tele.click/palpatine))
+- Sergey Bakaleynik (s.bakaleynik@innopolis.ru) ([@BSergey_jr](tele.click/BSergey_jr))
 
 <sup>(in alphabetical order)</sup>
 
@@ -156,3 +156,17 @@ Naive: AP=0.00                   BM25: AP=0.33
  Cricket World Cup                 Java (programming language)                           
  
 ```
+
+## Contribution
+
+- Arseniy Poyezzshayev 
+  - Indexer
+  - Report
+  - Optimizations
+- Nikita Lozhnkov 
+  - BM25 Ranker
+  - Report
+  - Cluster interaction
+- Sergey Bakaleynik 
+  - Naive Ranker
+  - Report
