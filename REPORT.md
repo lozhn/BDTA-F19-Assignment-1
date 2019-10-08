@@ -88,21 +88,17 @@ $ spark-submit --class Ranker app.jar hdfs:///egypt/indexMedium naive "hello wor
 
 #### Naive
 
-##### Issues
+In the beginning we didn't have enough time to learn Scala/Spark in depth. So we used RDDs to represent index, word frequency, etc.
+Another problem the division by zero so we had add smoothing for TF/IDF processing of a query on the fly.
 
-At first we have not enough time to learn Scala well. 
-So it led us to use RDD over query to calculate word frequency (because it was easiest way).
-Another problem was in we have to provide from division by zero, because of we make division TF by IDF of queries on flight.
-
-##### Realization
 In the basic vector space model, both documents and queries are represented with corresponding vectors, which capture TF/IDF weights of a document and the query.
 
-The simplest way to convert TF/IDF weights to a vector interpreted by computer is to index the array with word Ids and record TF/IDF value.
+The simplest way to convert TF/IDF weights to a vector interpreted by a computer is to index the array with word Ids and record TF/IDF value.
 The function that determines the relevance of a document to a query is the inner product (scalar product) of the two vectors: document `d` and given query `q`.
 
 ![naive_formula](./assets/naive_formula.png) 
 
-where **q<sub>i</sub>** is the TF/IDF weight of the ith term in the query. Summation is over intersection between term frequency of document with query term frequency (it provide to us speed up of ranker).  
+where **q<sub>i</sub>** is the TF/IDF weight of the i-th term in the query. We compute rank over the interscetion of term frequencies of a document and query term frequencies which is faster than the full union.
 
 #### BM25 
 
