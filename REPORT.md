@@ -71,6 +71,35 @@ $ spark-submit --class Ranker app.jar hdfs:///egypt/indexMedium naive "hello wor
 
 #### BM25 
 
+[BM25](https://en.wikipedia.org/wiki/Okapi_BM25) is on the most popular and widely used ranking alogirthms that is used to calculate a rank of document `D` given query `Q`
+
+![BM25 Formula](./assets/bm25_formula.png)
+
+We used default values for k<sub>1</sub> and b. **k<sub>1</sub>** = 2.0 and **b** = 0.75
+
+**f(q<sub>i</sub>, D)** is taken from the precomputed Index - it is an `RDD[String1, HashMap[String2, Int]]` where `String1` - Document title, `String2` - Word, `Int` - frequency of the Word in the Doc.
+
+The **D** and **avgdl** values are precomputer before a ranker is started and since these values are constant, in our context, we broadcasted them to use inside of the transformation steps using `Index.docs`
+
+**IDF(q<sub>i</sub>)** is also a precomputed value, given the query, we created and broadcasted a HashMap in order get a constant time access in the transformation steps.
+
+This is the formula we used to calcuate **IDF** (smoothed IDF)
+
+![Smoothed IDF](./assets/bm25_idf.png)
+
+Where **N** is the total number of documents (**D** mentioned above), **n(q<sub>i</sub>)** is the number of documents that contain **q<sub>i</sub>**. These values are stored in `Index.words`
+
+The ranking flow is the following:
+
+- Collect IDFs for the query terms - `idfs` (the common step for both naive and bm25)
+- Map through all of the documents
+    - Given the Doc and the related Term Frequency Map (word => frequence) 
+        - Iterate over the `idfs` and compute the BM25 score
+- At this point we have an RDD of (Rank, Doc)
+    - Apply `.sortByKey(ascending = false)` (the key is Rank)
+- Take 10 first elements with the highest rank
+
+
 ## Problems
 
 Precomputation of IDFs as well as TF/IDF for every term in every document may help both rankers. This computation may be performed on the immutable index and we added the method for it in CompactIndex class. We don’t serialize the precomputed TF/IDFs in files and must process it every time the index is loaded into memory. This means that our Rankers could exploit improved performance only if the Indexer program is loaded in memory (daemon process). However, according to the task we cannot use daemons to not occupy resources of the cluster. Every query ranking starts from loading dumped index and then ranking task. This is a drawback of our solution.
@@ -85,7 +114,45 @@ Indexing operation is quite performant:
 * **Loading** operation takes about **6 seconds**.
 * **Appending** new docs takes about **1 minute** (not including building time) for new docs dataset of size comparable to EnWikiMedium.
 
+### Future improvements
+
+- **D** and **avdgl** can be precomputed and stored in the index
+- Rank only the documents that do contain the query terms
+- Increase parallelization factor to partion the presorted `Index.docs` to allow parallel scan
+
+
+## Results
+
 Ranking is not that performant as we would like it to be:
 
 * Naive ranker is usually 1.5 times faster than BM25, because our implementation of BM25 needs to do more O(n) operations like `.count()` and filtering was not the most efficient due to fullscan of the docs. Next time we won't use RDDs and fullscan
-* BM25 worked better in terms of MAP 
+* BM25 showed better berformance is average but we assume that the more trustworthy result will be obtained on a more carefully parsed and preprocess data (e.g. some articles were not complete, tokens were not stemmed etc. <- this is the future work)
+
+```
+Query : "inhabited by numerous tribal nations prior to the landing in 1500 of explorer Pedro Álvares Cabral"
+
+Naive: AP=0.30                 BM25: AP=0.25
+ History of Austria              Explorer (disambiguation)               
+ History of Australia            1500s (decade)                 
+ History of the Netherlands      [Rank < 0.001]                       
+ History of France                 740s             
+ History of Poland                 Ananke             
+ History of Guatemala              1962               
+ Jean Chrétien                     1809        
+                                   1584
+                                   December 30
+                                   390s BC                                    
+                                   September 23
+-----------------------------------------------------------------------
+Query: "Hello world"
+
+Naive: AP=0.00                   BM25: AP=0.33                            
+ FIFA World Cup                    Hello Kitty                           
+ Russia                            "Hello, World" program                   
+ China                             Poe (singer)                  
+ World music                       Carmen Miranda                       
+ Economy of the United States      (Open Shortest Path First)
+ Greyhawk                          Todd Rundgren                     
+ Cricket World Cup                 Java (programming language)                           
+ 
+```
