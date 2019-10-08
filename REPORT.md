@@ -91,7 +91,7 @@ $ spark-submit --class Ranker app.jar hdfs:///egypt/indexMedium naive "hello wor
 ##### Issues
 
 At first we have not enough time to learn Scala well. 
-So it led us to use RDD over query to use MapReduce.
+So it led us to use RDD over query to calculate word frequency (because it was easiest way).
 Another problem was in we have to provide from division by zero, because of we make division TF by IDF of queries on flight.
 
 ##### Realization
