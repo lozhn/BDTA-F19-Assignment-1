@@ -3,15 +3,33 @@ In this homework, we are implementing a simple search engine with Spark. It supp
 ## args for submit
 
 ### Indexer
-1. filesForIndexing - path, that need to index
-2. indexSavePath - path for save index
-3. mode - build or add - build new one or add to existing
-4. indexLoadPath - path to load existing index, if mode=add
+```bash
+$ spark-submit --class Indexer app.jar <input>  <output> <mode> [<indexPath>]
+ 
+# <input> - path, that need to index
+# <output> - path, where to save index
+# <mode>(build|add)  - build new one or add to existing
+# <indexPath> - path to load existing index, if mode=add
+```
+#### example
 
+```bash
+$ spark-submit --class Indexer app.jar /EnWikiSmall index build
+```
 ### Ranker
-1. LoadPath - path for loading index
-2. method - naive(based on vector dot product) or bm25
-3. query - query for search through documents
+
+```bash
+$ spark-submit --class Ranker app.jar <input> <method> <query>
+
+#<input> - path for loading index
+#<method> - naive(based on vector dot product) or bm25
+#<query> - query to find relevant document
+```
+#### example
+
+```bash
+$ spark-submit --class Ranker app.jar index naive "hello world"
+```
 
 ## Contribute by
 ### Arsiniy Poyezzhayev
