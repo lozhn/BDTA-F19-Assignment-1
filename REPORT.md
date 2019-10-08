@@ -30,10 +30,12 @@ $ spark-submit --class Indexer app.jar <input-path> <index-path> <cmd> [<old-ind
 # <input-path> - a path to the documents to be indexed
 # <index-path> - a path where the index will be stored
 # <cmd> - build|add  
-#           - if build => <old-index> is not needed. 
-#               it will build an index on the files located ad <input-path>
-#           - if add => it will load index from <old-path>, 
-#               add documents from <input-path> and save the updated index to <index-path>
+#           - build 
+#              it will build an index on the files located ad <input-path>. <old-index> is not needed. 
+#               
+#           - add
+#               it will load index from <old-path>, add documents from <input-path> and save the updated index to <index-path>
+#               
 ```
 
 Example 
@@ -143,7 +145,9 @@ Naive: AP=0.30                 BM25: AP=0.25
                                    December 30
                                    390s BC                                    
                                    September 23
+
 -----------------------------------------------------------------------
+
 Query: "Hello world"
 
 Naive: AP=0.00                   BM25: AP=0.33                            
