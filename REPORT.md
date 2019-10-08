@@ -102,7 +102,7 @@ The function that determines the relevance of a document to a query is the inner
 
 ![naive_formula](./assets/naive_formula.png) 
 
-where **q<sub>i</sub>** is the TF/IDF weight of the ith term in the query. Summation is over intersection between term frequency of document with query term frequency.  
+where **q<sub>i</sub>** is the TF/IDF weight of the ith term in the query. Summation is over intersection between term frequency of document with query term frequency (it provide to us speed up of ranker).  
 
 #### BM25 
 
