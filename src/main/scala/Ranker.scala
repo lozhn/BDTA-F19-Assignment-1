@@ -28,7 +28,7 @@ object Ranker {
         ranker = _ranker
         query = _query
       case _ =>
-        println("""Usage: <index path [/egypt/indexMedium]> <ranker: naive|bm25> "<query>" """)
+        println("""Usage: <index path [hdfs:///egypt/indexMedium]> <ranker: naive|bm25> "<query>" """)
         return
     }
 
