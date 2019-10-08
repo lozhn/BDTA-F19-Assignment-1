@@ -1,25 +1,26 @@
 # Assignment 1
 
-## Team: 
-- Arseniy Poyezzshayev (a.poezzhaev@innopolis.ru)
-- Nikita Lozhnkov (n.lozhnikov@innopolis.ru)
-- Sergey Bakaleynik (s.bakaleynik@innopolis.ru)
+## [Github Repository](https://github.com/lozhn/BDTA-F19-Assignment-1) 
 
-<sup>In alphabetical order</sup>
+## Team: 
+- Arseniy Poyezzshayev (a.poezzhaev@innopolis.ru) (@arseniy_p)
+- Nikita Lozhnkov (n.lozhnikov@innopolis.ru) (@palpatine)
+- Sergey Bakaleynik (s.bakaleynik@innopolis.ru) (@BSergey_jr)
+
+<sup>(in alphabetical order)</sup>
 
 ## Intro
 
-In this homework, we are implementing a simple search engine with Spark. It supports indexing and document search. The goal is to practice programming with Spark, and search complexity is not a primary measure of performance. We implemented document indexing using RDD, the ranger used two methods: Basic Vector Space Model and BM25.
+In this homework, we are implementing a simple search engine with Spark. It supports indexing and document search. The goal is to practice programming with Spark, and search complexity is not a primary measure of performance. We implemented document indexing using RDD, the ranger used two methods: Basic Vector Space Model (Naive) and BM25.
 
 ## Components 
 
-`src/main/scala`
+The source code files are located at `src/main/scala`
 
-- **Indexer** (`Indexer.scala`)
-    - **CompactIndex** (`CompactIndex.scala`)
-- **Ranker** (`Ranker.scala`)
-- **Misc**
-    - **implicits** (`implicits.scala`)
+- **Indexer** (`Indexer.scala`) - the Indexer class that operates upon `CompactIndex` class
+    - **CompactIndex** (`CompactIndex.scala`) - the CompactIndex class and object
+- **Ranker** (`Ranker.scala`) - the Ranker class that provides _Naive_ and _BM25_ ranking algorithms
+- **implicits** (`implicits.scala`) - implicit methods on _String_, i.e. `.tokenize()` and `sanitizeTrimLower` to provide uniform string processing capabilites on top of the _String_ class
 
 ### Indexer
 
@@ -43,7 +44,7 @@ $ spark-submit --class Indexer app.jar hdfs:///EnWikiMedium hdfs:///egypt/indexM
 
 **Indexer architecture**
 
-We decided to use RDDs as a main data structure for our computations because it is quite low-level and without any SQL-like optimizations etc. This allowed us to feel the pain to investigate the issues connected with data flows. The initially proposed RDD of 3-Tuples `(doc, word, frequency)` is too redundant. We created the `CompactIndex` class which contained two internal indexes. One is a map of `Words: {word: Set(docs)}` another is nested map of `Docs: {doc: {word: TF}}`. These internal indices allowed us to effectively calculate TF, IDF, avgdl, |D| which are enough for both rankers. 
+We decided to use RDDs as a main data structure for our computations because it is quite low-level and without any SQL-like optimizations etc. This allowed us to feel the pain to investigate the issues connected with data flows. The initially proposed RDD of 3-Tuples `(doc, word, frequency)` is too redundant. We created the `CompactIndex` class which contained two internal indexes. One is a map of `Words: {word: Set(docs)}` another is nested map of `Docs: {doc: {word: TF}}`. These internal indices allowed us to effectively calculate _TF_, _IDF_, _avgdl_, _|D|_ which are enough for both rankers. 
 
 The main architectural decision was to support the adding of new documents to index on-fly. Therefore, we decide not to add the precomputed IDFs to words index, because we must recompute IDFs with every added document. Also, we assumed that the addition of duplicated documents is possible, therefore we keep the Sets of documents in which the certain word is occurred (not only number of documents). We created the method for appending the newly added documents to existing index.
 
@@ -55,9 +56,9 @@ Is an object class with `main` method.
 ```bash
 $ spark-submit --class Ranker app.jar <input> <method> <query>
 
-#<input> - path for loading index
-#<method> - naive(based on vector dot product) or bm25
-#<query> - query to find relevant document
+# <input> - path for loading index
+# <method> - naive(based on vector dot product) or bm25
+# <query> - query to find relevant document
 ```
 
 Example
