@@ -1,0 +1,41 @@
+version: "3"
+
+services:
+  base: &base
+    image: lozhn/spark-hadoop-base
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+    command: tail -f /dev/null
+
+  namenode:
+    <<: *base
+    container_name: namenode
+    ports:
+      - 9870:9870
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+
+  resourcemanager:
+    <<: *base
+    container_name: resourcemanager
+    ports:
+      - 8088:8088
+
+  node1:
+    <<: *base
+    container_name: node1
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+
+  historyserver:
+    <<: *base
+    container_name: historyserver
+    volumes:
+      - hadoop_historyserver:/hadoop/yarn/timeline
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
+  hadoop_historyserver:
