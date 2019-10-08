@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+        <title>Assignment 1</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.10.2/dist/katex.min.css" integrity="sha384-yFRtMMDnQtDRO8rLpMIKrtPCD5jdktao2TV19YiZYWMDkUR5GQZR/NOVTdquEx1j" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+        <link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <style>
+.task-list-item { list-style-type: none; } .task-list-item-checkbox { margin-left: -20px; vertical-align: middle; }
+</style>
+        <style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        
+        <script src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+    </head>
+    <body>
+        <h1 id="assignment-1">Assignment 1</h1>
+<ul>
+<li><a href="#assignment-1">Assignment 1</a>
+<ul>
+<li><a href="#github-repository">Github Repository</a></li>
+<li><a href="#team">Team:</a></li>
+<li><a href="#intro">Intro</a></li>
+<li><a href="#components">Components</a>
+<ul>
+<li><a href="#indexer">Indexer</a></li>
+<li><a href="#ranker">Ranker</a>
+<ul>
+<li><a href="#naive">Naive</a></li>
+<li><a href="#bm25">BM25</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#problems">Problems</a></li>
+<li><a href="#performance">Performance</a>
+<ul>
+<li><a href="#future-improvements">Future improvements</a></li>
+</ul>
+</li>
+<li><a href="#results">Results</a></li>
+<li><a href="#contribution">Contribution</a></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="github-repository"><a href="https://github.com/lozhn/BDTA-F19-Assignment-1">Github Repository</a></h2>
+<h2 id="team">Team:</h2>
+<ul>
+<li>Arseniy Poyezzshayev (<a href="mailto:a.poezzhaev@innopolis.ru">a.poezzhaev@innopolis.ru</a>) (<a href="tele.click/arseniy_p">@arseniy_p</a>)</li>
+<li>Nikita Lozhnkov (<a href="mailto:n.lozhnikov@innopolis.ru">n.lozhnikov@innopolis.ru</a>) (<a href="tele.click/palpatine">@palpatine</a>)</li>
+<li>Sergey Bakaleynik (<a href="mailto:s.bakaleynik@innopolis.ru">s.bakaleynik@innopolis.ru</a>) (<a href="tele.click/BSergey_jr">@BSergey_jr</a>)</li>
+</ul>
+<p><sup>(in alphabetical order)</sup></p>
+<h2 id="intro">Intro</h2>
+<p>In this homework, we are implementing a simple search engine with Spark. It supports indexing and document search. The goal is to practice programming with Spark, and search complexity is not a primary measure of performance. We implemented document indexing using RDD, the ranger used two methods: Basic Vector Space Model (Naive) and BM25.</p>
+<h2 id="components">Components</h2>
+<p>The source code files are located at <code>src/main/scala</code></p>
+<ul>
+<li><strong>Indexer</strong> (<code>Indexer.scala</code>) - the Indexer class that operates upon <code>CompactIndex</code> class
+<ul>
+<li><strong>CompactIndex</strong> (<code>CompactIndex.scala</code>) - the CompactIndex class and object</li>
+</ul>
+</li>
+<li><strong>Ranker</strong> (<code>Ranker.scala</code>) - the Ranker class that provides <em>Naive</em> and <em>BM25</em> ranking algorithms</li>
+<li><strong>implicits</strong> (<code>implicits.scala</code>) - implicit methods on <em>String</em>, i.e. <code>.tokenize()</code> and <code>sanitizeTrimLower</code> to provide uniform string processing capabilites on top of the <em>String</em> class</li>
+</ul>
+<h3 id="indexer">Indexer</h3>
+<pre><code class="language-bash"><div>$ spark-submit --class Indexer app.jar &lt;input-path&gt; &lt;index-path&gt; &lt;cmd&gt; [&lt;old-index&gt;]
+
+<span class="hljs-comment"># &lt;input-path&gt; - a path to the documents to be indexed</span>
+<span class="hljs-comment"># &lt;index-path&gt; - a path where the index will be stored</span>
+<span class="hljs-comment"># &lt;cmd&gt; - build|add  </span>
+<span class="hljs-comment">#           - build </span>
+<span class="hljs-comment">#              it will build an index on the files located ad &lt;input-path&gt;. &lt;old-index&gt; is not needed. </span>
+<span class="hljs-comment">#               </span>
+<span class="hljs-comment">#           - add</span>
+<span class="hljs-comment">#               it will load index from &lt;old-path&gt;, add documents from &lt;input-path&gt; and save the updated index to &lt;index-path&gt;</span>
+<span class="hljs-comment">#               </span>
+</div></code></pre>
+<p>Example</p>
+<pre><code class="language-bash"><div>$ spark-submit --class Indexer app.jar hdfs:///EnWikiMedium hdfs:///egypt/indexMedium build
+</div></code></pre>
+<p><strong>Indexer architecture</strong></p>
+<p>We decided to use RDDs as a main data structure for our computations because it is quite low-level and without any SQL-like optimizations etc. This allowed us to feel the pain to investigate the issues connected with data flows. The initially proposed RDD of 3-Tuples <code>(doc, word, frequency)</code> is too redundant. We created the <code>CompactIndex</code> class which contained two internal indexes. One is a map of <code>Words: {word: Set(docs)}</code> another is nested map of <code>Docs: {doc: {word: TF}}</code>. These internal indices allowed us to effectively calculate <em>TF</em>, <em>IDF</em>, <em>avgdl</em>, <em>|D|</em> which are enough for both rankers.</p>
+<p>The main architectural decision was to support the adding of new documents to index on-fly. Therefore, we decide not to add the precomputed IDFs to words index, because we must recompute IDFs with every added document. Also, we assumed that the addition of duplicated documents is possible, therefore we keep the Sets of documents in which the certain word is occurred (not only number of documents). We created the method for appending the newly added documents to existing index.</p>
+<h3 id="ranker">Ranker</h3>
+<p>Is an object class with <code>main</code> method.</p>
+<pre><code class="language-bash"><div>$ spark-submit --class Ranker app.jar &lt;input&gt; &lt;method&gt; &lt;query&gt;
+
+<span class="hljs-comment"># &lt;input&gt; - path for loading index</span>
+<span class="hljs-comment"># &lt;method&gt; - naive(based on vector dot product) or bm25</span>
+<span class="hljs-comment"># &lt;query&gt; - query to find relevant document</span>
+</div></code></pre>
+<p>Example</p>
+<pre><code class="language-bash"><div>$ spark-submit --class Ranker app.jar hdfs:///egypt/indexMedium naive <span class="hljs-string">"hello world"</span>
+</div></code></pre>
+<h4 id="naive">Naive</h4>
+<h4 id="bm25">BM25</h4>
+<p><a href="https://en.wikipedia.org/wiki/Okapi_BM25">BM25</a> is on the most popular and widely used ranking alogirthms that is used to calculate a rank of document <code>D</code> given query <code>Q</code></p>
+<p><img src="file:////Users/lozhn/Google Drive/InnopolisU/F19-BD/assignment-1/BDTA-F19-Assignment-1/assets/bm25_formula.png" alt="BM25 Formula"></p>
+<p>We used default values for k<sub>1</sub> and b. <strong>k<sub>1</sub></strong> = 2.0 and <strong>b</strong> = 0.75</p>
+<p><strong>f(q<sub>i</sub>, D)</strong> is taken from the precomputed Index - it is an <code>RDD[String1, HashMap[String2, Int]]</code> where <code>String1</code> - Document title, <code>String2</code> - Word, <code>Int</code> - frequency of the Word in the Doc.</p>
+<p>The <strong>D</strong> and <strong>avgdl</strong> values are precomputer before a ranker is started and since these values are constant, in our context, we broadcasted them to use inside of the transformation steps using <code>Index.docs</code></p>
+<p><strong>IDF(q<sub>i</sub>)</strong> is also a precomputed value, given the query, we created and broadcasted a HashMap in order get a constant time access in the transformation steps.</p>
+<p>This is the formula we used to calcuate <strong>IDF</strong> (smoothed IDF)</p>
+<p><img src="file:////Users/lozhn/Google Drive/InnopolisU/F19-BD/assignment-1/BDTA-F19-Assignment-1/assets/bm25_idf.png" alt="Smoothed IDF"></p>
+<p>Where <strong>N</strong> is the total number of documents (<strong>D</strong> mentioned above), <strong>n(q<sub>i</sub>)</strong> is the number of documents that contain <strong>q<sub>i</sub></strong>. These values are stored in <code>Index.words</code></p>
+<p>The ranking flow is the following:</p>
+<ul>
+<li>Collect IDFs for the query terms - <code>idfs</code> (the common step for both naive and bm25)</li>
+<li>Map through all of the documents
+<ul>
+<li>Given the Doc and the related Term Frequency Map (word =&gt; frequence)
+<ul>
+<li>Iterate over the <code>idfs</code> and compute the BM25 score</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>At this point we have an RDD of (Rank, Doc)
+<ul>
+<li>Apply <code>.sortByKey(ascending = false)</code> (the key is Rank)</li>
+</ul>
+</li>
+<li>Take 10 first elements with the highest rank</li>
+</ul>
+<h2 id="problems">Problems</h2>
+<p>Precomputation of IDFs as well as TF/IDF for every term in every document may help both rankers. This computation may be performed on the immutable index and we added the method for it in CompactIndex class. We don’t serialize the precomputed TF/IDFs in files and must process it every time the index is loaded into memory. This means that our Rankers could exploit improved performance only if the Indexer program is loaded in memory (daemon process). However, according to the task we cannot use daemons to not occupy resources of the cluster. Every query ranking starts from loading dumped index and then ranking task. This is a drawback of our solution.</p>
+<p>We faced the problem of RDDs serialization in objectFile, because there is no native support for every Scala collection in RDD serialization. Therefore, we created custom save and load methods in CompactIIndex, which internally saves and loads two separate RDDs (Words and Docs).</p>
+<h2 id="performance">Performance</h2>
+<p>Indexing operation is quite performant:</p>
+<ul>
+<li>It <strong>indexes</strong> the whole dataset (EnWikiMedium) in about <strong>6 minutes</strong> on cluster.</li>
+<li><strong>Loading</strong> operation takes about <strong>6 seconds</strong>.</li>
+<li><strong>Appending</strong> new docs takes about <strong>1 minute</strong> (not including building time) for new docs dataset of size comparable to EnWikiMedium.</li>
+</ul>
+<h3 id="future-improvements">Future improvements</h3>
+<ul>
+<li><strong>D</strong> and <strong>avdgl</strong> can be precomputed and stored in the index</li>
+<li>Rank only the documents that do contain the query terms</li>
+<li>Increase parallelization factor to partion the presorted <code>Index.docs</code> to allow parallel scan</li>
+</ul>
+<h2 id="results">Results</h2>
+<p>Ranking is not that performant as we would like it to be:</p>
+<ul>
+<li>Naive ranker is usually 1.5 times faster than BM25, because our implementation of BM25 needs to do more O(n) operations like <code>.count()</code> and filtering was not the most efficient due to fullscan of the docs. Next time we won't use RDDs and fullscan</li>
+<li>BM25 showed better berformance is average but we assume that the more trustworthy result will be obtained on a more carefully parsed and preprocess data (e.g. some articles were not complete, tokens were not stemmed etc. &lt;- this is the future work)</li>
+</ul>
+<pre><code><div>Query : &quot;inhabited by numerous tribal nations prior to the landing in 1500 of explorer Pedro Álvares Cabral&quot;
+
+Naive: AP=0.30                 BM25: AP=0.25
+ History of Austria              Explorer (disambiguation)               
+ History of Australia            1500s (decade)                 
+ History of the Netherlands      [Rank &lt; 0.001]                       
+ History of France                 740s             
+ History of Poland                 Ananke             
+ History of Guatemala              1962               
+ Jean Chrétien                     1809        
+                                   1584
+                                   December 30
+                                   390s BC                                    
+                                   September 23
+
+-----------------------------------------------------------------------
+
+Query: &quot;Hello world&quot;
+
+Naive: AP=0.00                   BM25: AP=0.33                            
+ FIFA World Cup                    Hello Kitty                           
+ Russia                            &quot;Hello, World&quot; program                   
+ China                             Poe (singer)                  
+ World music                       Carmen Miranda                       
+ Economy of the United States      (Open Shortest Path First)
+ Greyhawk                          Todd Rundgren                     
+ Cricket World Cup                 Java (programming language)                           
+ 
+</div></code></pre>
+<h2 id="contribution">Contribution</h2>
+<ul>
+<li>Arseniy Poyezzshayev
+<ul>
+<li>Indexer</li>
+<li>Report</li>
+<li>Optimizations</li>
+</ul>
+</li>
+<li>Nikita Lozhnkov
+<ul>
+<li>BM25 Ranker</li>
+<li>Report</li>
+<li>Cluster interaction</li>
+</ul>
+</li>
+<li>Sergey Bakaleynik
+<ul>
+<li>Naive Ranker</li>
+<li>Report</li>
+</ul>
+</li>
+</ul>
+
+    </body>
+    </html>
