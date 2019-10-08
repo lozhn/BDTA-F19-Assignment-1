@@ -1,5 +1,22 @@
 # Assignment 1
 
+- [Assignment 1](#assignment-1)
+  - [Github Repository](#github-repository)
+  - [Team:](#team)
+  - [Intro](#intro)
+  - [Components](#components)
+    - [Indexer](#indexer)
+    - [Ranker](#ranker)
+      - [Naive](#naive)
+      - [BM25](#bm25)
+  - [Problems](#problems)
+  - [Performance](#performance)
+    - [Future improvements](#future-improvements)
+  - [Results](#results)
+  - [Contribution](#contribution)
+
+---
+
 ## [Github Repository](https://github.com/lozhn/BDTA-F19-Assignment-1) 
 
 ## Team: 
